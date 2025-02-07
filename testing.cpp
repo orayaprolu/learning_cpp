@@ -2,8 +2,15 @@
 
 int main()
 {
-    int x {10};
-    std::cout << -x << '\n';
+	std::cout << 2 + 3 << '\n';
+	
+	int x{ 6 };
+	int y{ x - 2 };
+	std::cout << y << '\n';
 
-    return 0;
+	int z{ };
+	z = x;
+	std::cout << z * x << '\n';
+
+	return 0;
 }
