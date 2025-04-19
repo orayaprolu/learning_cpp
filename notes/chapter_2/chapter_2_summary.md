@@ -9,7 +9,7 @@
 
 - Variables are destroyed in reverse order of creation at the end of the set of curly braces they are defined in
 
-- Scope is a compile time property
+- Scope is a compile time property, meaning it is enforced during compile time
 
 -**Temporary Objects** aka **Anonymous Objects** are objects that have no scope and are destroyded before the next statement begins e.g.
 
@@ -84,6 +84,7 @@ void foo(int x) //foo is defined in the global score, x is defined within scope 
   - It mostly just does uninteresting things like stripping out comments but it has one important role which is processing directives such as #include
 
 - When a preprocessor is done processing the result is a **Translation Unit** which is what is compiled by the compiler.
+  - Think of it as a single cpp file plus all the code pulled in by the includes and all macros
 
 - The entire process of preprocessing, compiling, and linking is called **Translation**
 
@@ -168,7 +169,8 @@ int main()
 
 - When you #include a file, the content of the file is inserted at the point of inclusion
   - We use angle brackets < > when the code lives in system paths
-  - We use quotes "" for own project files in current project directory
+    - Preprocessor will only serach for directories specified by the `include directories` configuration, this is defaulted to directories that come with your compiler/OS
+  - We use quotes "" for own project files in current project directory that we wrote ourselves
 
 - A header file consists of two parts: a header guard and the conents of the header file, which sould be the forward declarations of all the identifiers
 
@@ -185,3 +187,146 @@ int main()
   - Will make it hard to avoid one definition rule (ODR) issues
   - any change make to one cpp file will cause all the others to recompile as well which is slow
   - It isn't conventional
+
+- Why doesn't iostream (and other std packages) have a .h extension?
+  - When C++ was first created all headers in standard library ended in .h suffix
+  - When they made the jump to using the std namespace, they wanted to keep backwards compatibility with those using the global namespace include
+  - So they created a new way to include standard library packages (which simply doesn't have .h extension) which imports to the std namespace
+
+- When including header files relative paths are not recommended and instead you should have a headers folder on the root (at least for big projects)
+
+- Header files may include other header Files
+
+- When you source file include a header file it also gets any other header files that are included by that header (and any header files those include, and so on), these additional header files are called **Transitive Includes**
+  - You should generally not rely on contents of headers from transitive includes as implementation of header files is not guarenteed to be the same across versions
+
+- We should order includes to maximize the change that missing includes (in the header file) will be flagged by the compiler as and not rely on transitive includes:
+  (1.) The paired header file for this code file (e.g. add.cpp should #include "add.h")
+  (2.) Other headers from the same project (e.g. #include "mymath.h")
+  (3.) 3rd party library headers (e.g. #include <boost/tuple/tuple.hpp>)
+  (4.) Standard library headers (e.g. #include <iostream>)
+
+
+## 2.12 - Header Guards
+- One problem with header files duplicate definitions can be quite common due to transitive inclusion, e.g main.cpp include 2 header files both of which include the <iostream>
+
+- **Header Guards** are preprocessor directives (used to conditionally compile code) that take the following form:
+```
+#ifndef SOME_UNIQUE_NAME_HERE
+#define SOME_UNIQUE_NAME_HERE
+
+// your declarations (and certain types of definitions) here
+
+#endif
+```
+
+- When header is included the preprocessor will only add it to the translation unit if SOME_UNIQUE_NAME_HERE is not defined (which is what `#ifndef SOME_UNIQUE_NAME_HERE` is doing)
+  - SOME_UNIQUE_NAME_HERE is conventionally full filename of header file in all caps seperated by underscore e.g SQUARE_HPP
+
+
+- Header guards do not prevent a header from being included once in different code files!
+  - This makes sense since when one translation unit is done all of the macros out of scope for the next file
+  - This will cause a linker error if you wrote any definitions in your header file (since two different cpp files would have a definition, duplicate definitions)
+
+- The best way to avoid this is to just not have any definitions in your header files, but sometimes it's unavoidable (like user-defined type definitions)
+
+- Modern compilers support a simpler header guard with the `#pragma` directive
+  - This does pretty much the same thing as the guard from earlier
+  - pragma is not defined in the C++ standard so it's completely compiler dependent, this is why Google prefers to not use it
+
+## 2.13 - How to Design First Program
+- The most important and hardest step of programming in planning
+
+- Step 1: Define you goal
+  - Express it as a user-facing outcome in one or two sentences
+  - e.g. Generate a list of stock recommendations for stocks that have high dividends.
+
+- Step 2: Define requirements
+  - This includes both constraints your solution has to abide and capabilities that program must have
+  - e.g. "The stock recommendations should leverage historical pricing data.", "The program should produce results within 10 seconds of the user submitting their request", "Needs a testable version within the next 7 days."
+
+- Step 3: Define tools, targets, and backup plan
+  - Common questions to ask yourself here are:
+    - Defining what target architecture and/or OS your program will run on.
+    - Determining what set of tools you will be using.
+    - Determining whether you will write your program alone or as part of a team.
+    - Defining your testing/feedback/release strategy.
+    - Determining how you will back up your code.
+
+- Step 4: Break down hard problems into easy problems
+  - This is a **Top Down** method of solving problems where we are constantly breaking complex tasks down into simpler subtasks which individually are easier to solve
+
+  ```
+  Let’s say we want to clean our house. Our task hierarchy currently looks like this:
+
+  Clean the house
+  Cleaning the entire house is a pretty big task to do in one sitting, so let’s break it into subtasks:
+
+  Clean the house
+    Vacuum the carpets
+    Clean the bathrooms
+    Clean the kitchen
+  That’s more manageable, as we now have subtasks that we can focus on individually. However, we can break some of these down even further:
+
+  Clean the house
+    Vacuum the carpets
+    Clean the bathrooms
+      Scrub the toilet (yuck!)
+      Wash the sink
+    Clean the kitchen
+      Clear the countertops
+      Clean the countertops
+      Scrub the sink
+      Take out the trash
+  Now we have a hierarchy of tasks, none of them particularly hard. By completing each of these relatively manageable sub-items, we can complete the more difficult overall task of cleaning the house.
+  ```
+  - We can use this in conjuction with **Bottom Up** problem solving where we can easy tasks we already know we need to do (or have already been done) and group them hierarchically
+
+- Step 5: Figure out the sequence of events
+  - This may not be exactly linear but in general should follow a clear path
+
+- Implementation Step 1: Outline main function
+  - Don't worry about inputs and outputs for the time being, e.g
+  ```
+  int main()
+  {
+  //    doBedroomThings();
+  //    doBathroomThings();
+  //    doBreakfastThings();
+  //    doTransportationThings();
+
+      return 0;
+  }
+  ```
+
+- Implementation Step 2: Implement each function
+  - Each function has three steps
+    1. Define the function prototype
+    2. Write the function
+    3. Test the Function
+  - If a function is granular enough this should be straightforward
+  - Overly complex functions should probably be broken down more (or possible you are doing stuff in the wrong order)
+  - Testing is absolutely vital to ensuring you can trust the code you've already written !!
+
+- Implementation Step 3: Final testing
+  - Test the whole program and fix shit that doesn't work
+
+- **Keep programs simple to start**
+  - This can help prevent the feeling of being overwhelmed and discouraged, start with something you can fs make and build on top of it
+
+- **Add features over time**
+  - Once you have a simple program working well, it's much easier to add features, less stressful tbh
+
+- **Focus on one area at a time**
+  - If you split your attention you are more likely to forget important details
+
+- **Test each piece of code as you go**
+  - This is so you don't get 1,000 compiler errors at once lol, as mentioned earlier trusting the code you wrote is so important !!
+
+- **Don't invest in perfecting early code**
+  - If you invest too early in polishing code (documentation, optimization, etc...) you risk losing all that investment when a code change is necessary
+
+- **Optimize for maintainability, not performance**
+  - Famous computer scientist Donald Knuth said "premature optimization is the root of all evil"
+  - Most performance benefits come from good program structure, using the right tools and capabilities for the problem at hand, and following best practices.
+  - Micro-optimization (like finding which of 2 statements is faster) rarely matter ESPECIALLY when buliding the first version of a program
